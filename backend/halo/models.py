@@ -216,3 +216,16 @@ class ShortlistEntry(TimestampMixin, Base):
 
     brief: Mapped[Brief] = relationship(back_populates="entries")
     creator: Mapped[Creator] = relationship(lazy="selectin")
+
+
+class Translation(TimestampMixin, Base):
+    """AI-written text (Halo writes in English) translated the first time someone reads it in another language."""
+
+    __tablename__ = "translations"
+    __table_args__ = (UniqueConstraint("lang", "source_hash"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lang: Mapped[str] = mapped_column(String(5))
+    source_hash: Mapped[str] = mapped_column(String(64))  # sha256 of the English text
+    source: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)

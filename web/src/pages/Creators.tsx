@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { api, Creator, CreatorDetail, formatNumber } from "../api";
+import { api, Creator, CreatorDetail } from "../api";
+import { AiTextStatus, LANGS, useAiText, useI18n } from "../i18n";
 
 export default function Creators() {
+  const { t, tv } = useI18n();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [filters, setFilters] = useState({ q: "", tag: "", language: "" });
   const [selected, setSelected] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const { tr } = useAiText(creators.flatMap((c) => c.niche_tags.slice(0, 3)));
 
   const load = () => api.creators(filters).then(setCreators);
   useEffect(() => {
@@ -16,9 +19,9 @@ export default function Creators() {
     <div className="split">
       <aside className="panel list">
         <div className="row between">
-          <h2>Creators</h2>
+          <h2>{t("creators")}</h2>
           <button className="ghost" onClick={() => setAdding(!adding)}>
-            {adding ? "Cancel" : "+ Add"}
+            {adding ? t("cancel") : t("add")}
           </button>
         </div>
         {adding && (
@@ -31,42 +34,41 @@ export default function Creators() {
           />
         )}
         <input
-          placeholder="Search name or content…"
+          placeholder={t("search_ph")}
           value={filters.q}
           onChange={(e) => setFilters({ ...filters, q: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && load()}
         />
         <div className="row">
-          <input placeholder="Topic" value={filters.tag} onChange={(e) => setFilters({ ...filters, tag: e.target.value })} />
+          <input placeholder={t("topic_ph")} value={filters.tag} onChange={(e) => setFilters({ ...filters, tag: e.target.value })} />
           <select value={filters.language} onChange={(e) => setFilters({ ...filters, language: e.target.value })}>
-            <option value="">Any language</option>
-            <option value="uz">Uzbek</option>
-            <option value="ru">Russian</option>
-            <option value="en">English</option>
+            <option value="">{t("any_language")}</option>
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {tv("lang", l.code)}
+              </option>
+            ))}
           </select>
         </div>
         {creators.map((c) => (
           <button key={c.id} className={`list-item ${selected === c.id ? "active" : ""}`} onClick={() => setSelected(c.id)}>
             <span>
               {c.display_name}
-              <span className="muted small"> {c.niche_tags.slice(0, 3).join(", ")}</span>
+              <span className="muted small"> {c.niche_tags.slice(0, 3).map(tr).join(", ")}</span>
             </span>
             {c.avg_quality != null && <span className="pill">{c.avg_quality.toFixed(1)}</span>}
           </button>
         ))}
       </aside>
       <section className="panel grow">
-        {selected ? (
-          <CreatorView id={selected} onSelect={setSelected} />
-        ) : (
-          <p className="muted">Pick a creator. Creators can also join through the Telegram bot with /join.</p>
-        )}
+        {selected ? <CreatorView id={selected} onSelect={setSelected} /> : <p className="muted">{t("pick_creator")}</p>}
       </section>
     </div>
   );
 }
 
 function AddCreator({ onAdded }: { onAdded: (c: Creator) => void }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({ display_name: "", city: "", price_uzs: "", instagram: "", youtube: "" });
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
@@ -87,22 +89,30 @@ function AddCreator({ onAdded }: { onAdded: (c: Creator) => void }) {
 
   return (
     <div className="subform">
-      <input placeholder="Name" value={form.display_name} onChange={set("display_name")} />
-      <input placeholder="City" value={form.city} onChange={set("city")} />
-      <input placeholder="Price per video, UZS" value={form.price_uzs} onChange={set("price_uzs")} />
-      <input placeholder="Instagram handle" value={form.instagram} onChange={set("instagram")} />
-      <input placeholder="YouTube handle, e.g. @channel" value={form.youtube} onChange={set("youtube")} />
+      <input placeholder={t("name_ph")} value={form.display_name} onChange={set("display_name")} />
+      <input placeholder={t("city_ph")} value={form.city} onChange={set("city")} />
+      <input placeholder={t("price_ph")} value={form.price_uzs} onChange={set("price_uzs")} />
+      <input placeholder={t("instagram_ph")} value={form.instagram} onChange={set("instagram")} />
+      <input placeholder={t("youtube_ph")} value={form.youtube} onChange={set("youtube")} />
       <button onClick={save} disabled={!form.display_name}>
-        Save creator
+        {t("save_creator")}
       </button>
     </div>
   );
 }
 
 function CreatorView({ id, onSelect }: { id: number; onSelect: (id: number) => void }) {
+  const { t, tv, num } = useI18n();
   const [creator, setCreator] = useState<CreatorDetail | null>(null);
   const [similar, setSimilar] = useState<{ creator: Creator; similarity: number }[] | null>(null);
   const [uploading, setUploading] = useState(false);
+  const { tr, translating, failed } = useAiText([
+    creator?.summary,
+    ...(creator?.niche_tags ?? []),
+    ...(creator?.videos ?? []).flatMap((v) =>
+      v.analysis ? [v.analysis.summary, v.analysis.hook, v.analysis.setting, ...v.analysis.brand_safety_flags] : [],
+    ),
+  ]);
 
   const load = () => api.creator(id).then(setCreator);
   useEffect(() => {
@@ -123,7 +133,7 @@ function CreatorView({ id, onSelect }: { id: number; onSelect: (id: number) => v
     load();
   };
 
-  if (!creator) return <p className="muted">Loading…</p>;
+  if (!creator) return <p className="muted">{t("loading")}</p>;
 
   return (
     <div>
@@ -131,41 +141,44 @@ function CreatorView({ id, onSelect }: { id: number; onSelect: (id: number) => v
         <div>
           <h1>{creator.display_name}</h1>
           <p className="muted">
-            {[creator.city, creator.languages.join(", "), creator.contact].filter(Boolean).join(" · ")}
+            {[creator.city, creator.languages.map((l) => tv("lang", l)).join(", "), creator.contact]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
         <div className="row">
           <button className="ghost" onClick={() => api.refreshCreator(id).then(load)}>
-            Refresh videos
+            {t("refresh_videos")}
           </button>
           <label className="button ghost">
-            {uploading ? "Uploading…" : "Upload video"}
+            {uploading ? t("uploading") : t("upload_video")}
             <input type="file" accept="video/*" hidden onChange={upload} />
           </label>
-          <button onClick={() => api.lookalikes(id).then(setSimilar)}>More like this</button>
+          <button onClick={() => api.lookalikes(id).then(setSimilar)}>{t("more_like_this")}</button>
         </div>
       </div>
-      {creator.summary && <p>{creator.summary}</p>}
+      <AiTextStatus translating={translating} failed={failed} />
+      {creator.summary && <p>{tr(creator.summary)}</p>}
       <div className="stats">
-        <Stat label="Quality" value={creator.avg_quality?.toFixed(1)} />
-        <Stat label="Hook" value={creator.avg_hook_strength?.toFixed(1)} />
-        <Stat label="Brand safety" value={creator.brand_safety_risk} />
+        <Stat label={t("quality")} value={creator.avg_quality?.toFixed(1)} />
+        <Stat label={t("hook")} value={creator.avg_hook_strength?.toFixed(1)} />
+        <Stat label={t("brand_safety")} value={tv("risk", creator.brand_safety_risk)} />
         {creator.accounts.map((a) => (
-          <Stat key={a.id} label={`${a.platform} ${a.handle}`} value={`${formatNumber(a.followers)} followers`} />
+          <Stat key={a.id} label={`${a.platform} ${a.handle}`} value={t("followers", { count: num(a.followers) })} />
         ))}
       </div>
       <div className="tags">
-        {creator.niche_tags.map((t) => (
-          <span key={t} className="tag">
-            {t}
+        {creator.niche_tags.map((tag) => (
+          <span key={tag} className="tag">
+            {tr(tag)}
           </span>
         ))}
       </div>
 
       {similar && (
         <>
-          <h2>Look-alikes</h2>
-          {similar.length === 0 && <p className="muted">No similar creators yet.</p>}
+          <h2>{t("lookalikes")}</h2>
+          {similar.length === 0 && <p className="muted">{t("no_similar")}</p>}
           <div className="row wrap">
             {similar.map((s) => (
               <button key={s.creator.id} className="ghost" onClick={() => onSelect(s.creator.id)}>
@@ -176,30 +189,35 @@ function CreatorView({ id, onSelect }: { id: number; onSelect: (id: number) => v
         </>
       )}
 
-      <h2>Videos Halo watched</h2>
-      {creator.videos.length === 0 && <p className="muted">No videos yet.</p>}
+      <h2>{t("videos_watched")}</h2>
+      {creator.videos.length === 0 && <p className="muted">{t("no_videos")}</p>}
       <div className="cards">
         {creator.videos.map((v) => (
           <article key={v.id} className="card">
             <div className="row between">
               <a href={v.url || undefined} target="_blank" rel="noreferrer">
-                Video {v.id} · {v.platform}
+                {t("video", { id: v.id })} · {tv("platform", v.platform)}
               </a>
-              <span className={`pill ${v.status}`}>{v.status}</span>
+              <span className={`pill ${v.status}`}>{tv("status", v.status)}</span>
             </div>
             {v.error && <p className="error small">{v.error}</p>}
             {v.analysis && (
               <>
-                <p>{v.analysis.summary}</p>
+                <p>{tr(v.analysis.summary)}</p>
                 <p className="small">
-                  <b>Hook ({v.analysis.hook_strength}/10):</b> {v.analysis.hook}
+                  <b>{t("hook_score", { score: v.analysis.hook_strength })}</b> {tr(v.analysis.hook)}
                 </p>
                 <p className="small muted">
-                  {v.analysis.setting} · {v.analysis.pacing} pacing · {v.analysis.energy} · quality{" "}
-                  {v.analysis.production_quality}/10 · authenticity {v.analysis.authenticity}/10
+                  {[
+                    tr(v.analysis.setting),
+                    t("pacing", { pace: tv("pace", v.analysis.pacing) }),
+                    tv("energy", v.analysis.energy),
+                    t("quality_score", { score: v.analysis.production_quality }),
+                    t("authenticity_score", { score: v.analysis.authenticity }),
+                  ].join(" · ")}
                 </p>
                 {v.analysis.brand_safety_flags.length > 0 && (
-                  <p className="small risk">⚠ {v.analysis.brand_safety_flags.join(", ")}</p>
+                  <p className="small risk">⚠ {v.analysis.brand_safety_flags.map(tr).join(", ")}</p>
                 )}
               </>
             )}

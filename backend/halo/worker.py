@@ -12,6 +12,7 @@ from sqlalchemy import or_, select
 from halo.agent.scout import run_brief
 from halo.config import get_settings
 from halo.db import get_sessionmaker
+from halo.logs import show_halo_logs
 from halo.models import Brief, BriefStatus, CreatorAccount, Platform
 from halo.queue import redis_settings
 from halo.services.analyze import analyze_video
@@ -66,15 +67,7 @@ async def rerun_standing_briefs(ctx) -> None:
 
 
 async def startup(ctx) -> None:
-    # arq only configures its own logger. Without this, Halo's INFO lines (job progress and
-    # the token usage of every Claude call) never reach the worker's output.
-    halo_log = logging.getLogger("halo")
-    if not halo_log.handlers:
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s %(message)s", "%H:%M:%S"))
-        halo_log.addHandler(handler)
-        halo_log.setLevel(logging.INFO)
-        halo_log.propagate = False
+    show_halo_logs()
 
 
 class WorkerSettings:

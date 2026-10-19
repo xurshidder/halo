@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { api, Brand } from "./api";
+import { Lang, LANGS, useI18n } from "./i18n";
 import BrandSettings from "./pages/BrandSettings";
 import Briefs from "./pages/Briefs";
 import Creators from "./pages/Creators";
 
 type Tab = "briefs" | "creators" | "brand";
+const TAB_LABELS = { briefs: "tab_briefs", creators: "tab_creators", brand: "tab_brand" } as const;
 
 export default function App() {
+  const { t, lang, setLang } = useI18n();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandId, setBrandId] = useState<number | null>(null);
   const [tab, setTab] = useState<Tab>("briefs");
@@ -27,7 +30,7 @@ export default function App() {
   }, []);
 
   const createBrand = async () => {
-    const name = prompt("Brand name");
+    const name = prompt(t("brand_name_prompt"));
     if (!name) return;
     const brand = await api.createBrand({ name });
     await loadBrands(brand.id);
@@ -43,13 +46,25 @@ export default function App() {
           <span className="halo-ring" /> Halo
         </div>
         <nav>
-          {(["briefs", "creators", "brand"] as Tab[]).map((t) => (
-            <button key={t} className={tab === t ? "tab active" : "tab"} onClick={() => setTab(t)}>
-              {t === "brand" ? "Brand" : t[0].toUpperCase() + t.slice(1)}
+          {(["briefs", "creators", "brand"] as Tab[]).map((tb) => (
+            <button key={tb} className={tab === tb ? "tab active" : "tab"} onClick={() => setTab(tb)}>
+              {t(TAB_LABELS[tb])}
             </button>
           ))}
         </nav>
         <div className="brand-picker">
+          <select
+            className="lang-picker"
+            aria-label={t("language")}
+            value={lang}
+            onChange={(e) => setLang(e.target.value as Lang)}
+          >
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
           <select value={brandId ?? ""} onChange={(e) => setBrandId(Number(e.target.value))}>
             {brands.map((b) => (
               <option key={b.id} value={b.id}>
@@ -58,7 +73,7 @@ export default function App() {
             ))}
           </select>
           <button className="ghost" onClick={createBrand}>
-            + Brand
+            {t("add_brand_short")}
           </button>
         </div>
       </header>
@@ -66,9 +81,9 @@ export default function App() {
         {error && <p className="error">{error}</p>}
         {!brand && tab !== "creators" ? (
           <div className="empty">
-            <h2>Start by adding your brand</h2>
-            <p>Halo uses your brand's pillars, no-go topics and tone in every search and draft.</p>
-            <button onClick={createBrand}>Add brand</button>
+            <h2>{t("empty_title")}</h2>
+            <p>{t("empty_text")}</p>
+            <button onClick={createBrand}>{t("add_brand")}</button>
           </div>
         ) : tab === "briefs" ? (
           <Briefs brand={brand!} />

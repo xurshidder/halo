@@ -29,6 +29,7 @@ a { color: var(--accent); }
 .halo-ring { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--accent); display: inline-block; }
 nav { display: flex; gap: 4px; flex: 1; }
 .brand-picker { display: flex; gap: 8px; }
+.brand-picker select { width: auto; }
 
 main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 .split { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }

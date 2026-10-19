@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -180,3 +181,12 @@ class JobOut(BaseModel):
 class TelegramLinkOut(BaseModel):
     url: str
     connected: bool
+
+
+class TranslateIn(BaseModel):
+    lang: Literal["uz", "ru", "en"]
+    texts: list[Annotated[str, Field(max_length=5000)]] = Field(max_length=300)
+
+
+class TranslateOut(BaseModel):
+    texts: list[str]

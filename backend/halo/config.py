@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     claude_effort_analysis: str = "medium"
     claude_effort_scoring: str = "medium"
     claude_effort_outreach: str = "low"
+    claude_effort_translation: str = "low"
 
     # Video analysis
     frames_per_video: int = 8

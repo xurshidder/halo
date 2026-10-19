@@ -131,7 +131,7 @@ export const api = {
   runBrief: (id: number) => request(`/briefs/${id}/run`, { method: "POST" }),
   updateEntry: (id: number, body: Partial<Pick<Entry, "status" | "outreach_message">>) =>
     request<Entry>(`/shortlist/${id}`, json("PATCH", body)),
-};
 
-export const formatNumber = (n: number | null | undefined) =>
-  n == null ? "—" : new Intl.NumberFormat("en", { notation: "compact" }).format(n);
+  translate: (lang: string, texts: string[]) =>
+    request<{ texts: string[] }>("/translate", json("POST", { lang, texts })),
+};

@@ -39,6 +39,7 @@ brief ──► scout agent (LangGraph)
 - **Look-alikes**: star a creator, then "More like this" finds creators with similar content (vector search when Voyage embeddings are on, topic overlap otherwise).
 - **Hourly routine** re-syncs creators whose accounts were not synced in the last 24 hours and analyzes new videos.
 - Re-running a brief refreshes scores but keeps your team's decisions (starred, rejected, contacted) and edited messages.
+- **Languages**: the web app is in Uzbek (default), Russian or English. Halo writes analyses, reasons and risks in English; when someone opens a page in Uzbek or Russian, the API translates that page's AI text with Claude once and keeps it (`translations` table), so later views cost nothing. The first view of a page in a language costs about $0.01–0.05.
 
 ## Run it
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, Brand } from "../api";
+import { useI18n } from "../i18n";
 
 const toLines = (items: string[]) => items.join("\n");
 const fromLines = (text: string) =>
@@ -9,6 +10,7 @@ const fromLines = (text: string) =>
     .filter(Boolean);
 
 export default function BrandSettings({ brand, onSaved }: { brand: Brand; onSaved: () => void }) {
+  const { t } = useI18n();
   const [form, setForm] = useState({
     name: brand.name,
     description: brand.description,
@@ -42,53 +44,53 @@ export default function BrandSettings({ brand, onSaved }: { brand: Brand; onSave
 
   return (
     <section className="panel narrow">
-      <h1>Brand context</h1>
-      <p className="muted">Loaded once. Every search, score and outreach draft runs against it.</p>
+      <h1>{t("brand_context")}</h1>
+      <p className="muted">{t("brand_context_note")}</p>
       <label>
-        Name
+        {t("brand_name")}
         <input value={form.name} onChange={set("name")} />
       </label>
       <label>
-        What the brand sells, and to whom
+        {t("brand_sells")}
         <textarea rows={3} value={form.description} onChange={set("description")} />
       </label>
       <div className="two-col">
         <label>
-          Pillars (one per line)
+          {t("pillars")}
           <textarea rows={4} value={form.pillars} onChange={set("pillars")} />
         </label>
         <label>
-          No-go topics (one per line)
+          {t("no_go")}
           <textarea rows={4} value={form.no_go_topics} onChange={set("no_go_topics")} />
         </label>
       </div>
       <label>
-        Tone of voice
-        <input value={form.tone} onChange={set("tone")} placeholder="warm, simple, a bit playful" />
+        {t("tone")}
+        <input value={form.tone} onChange={set("tone")} placeholder={t("tone_ph")} />
       </label>
       <label>
-        Customer languages
+        {t("customer_languages")}
         <input value={form.languages} onChange={set("languages")} placeholder="uz, ru" />
       </label>
       <label>
-        Past campaigns: what worked, what didn't
+        {t("past_campaigns")}
         <textarea rows={3} value={form.past_campaigns} onChange={set("past_campaigns")} />
       </label>
       <div className="row">
-        <button onClick={save}>Save</button>
-        {saved && <span className="muted">Saved</span>}
+        <button onClick={save}>{t("save")}</button>
+        {saved && <span className="muted">{t("saved")}</span>}
       </div>
 
-      <h2>Telegram alerts</h2>
+      <h2>{t("telegram_alerts")}</h2>
       {link?.connected ? (
-        <p>Connected. Halo posts new creator matches to your Telegram chat.</p>
+        <p>{t("telegram_connected")}</p>
       ) : (
         <p>
-          Get new matches in Telegram:{" "}
+          {t("telegram_before")}
           <a href={link?.url} target="_blank" rel="noreferrer">
-            open this link
-          </a>{" "}
-          in the chat or group where your team works.
+            {t("telegram_link")}
+          </a>
+          {t("telegram_after")}
         </p>
       )}
     </section>

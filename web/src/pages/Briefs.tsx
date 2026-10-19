@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { api, Brand, Brief, BriefDetail, Entry, formatNumber } from "../api";
+import { api, Brand, Brief, BriefDetail, Entry } from "../api";
+import { AiTextStatus, useAiText, useI18n } from "../i18n";
+
+const lines = (text: string) => text.split("\n").filter(Boolean);
 
 export default function Briefs({ brand }: { brand: Brand }) {
+  const { t, tv } = useI18n();
   const [briefs, setBriefs] = useState<Brief[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [form, setForm] = useState({ title: "", text: "", standing: false });
@@ -24,15 +28,15 @@ export default function Briefs({ brand }: { brand: Brand }) {
   return (
     <div className="split">
       <aside className="panel list">
-        <h2>New brief</h2>
+        <h2>{t("new_brief")}</h2>
         <input
-          placeholder="Title, e.g. Spring serum launch"
+          placeholder={t("brief_title_ph")}
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
         />
         <textarea
           rows={6}
-          placeholder="Describe the creator you need in plain words: who they talk to, what their videos look like, language, budget..."
+          placeholder={t("brief_text_ph")}
           value={form.text}
           onChange={(e) => setForm({ ...form, text: e.target.value })}
         />
@@ -42,29 +46,37 @@ export default function Briefs({ brand }: { brand: Brand }) {
             checked={form.standing}
             onChange={(e) => setForm({ ...form, standing: e.target.checked })}
           />
-          Keep watching: search again every morning and send new matches to Telegram
+          {t("keep_watching")}
         </label>
-        <button onClick={create}>Find creators</button>
+        <button onClick={create}>{t("find_creators")}</button>
 
-        <h2>Briefs</h2>
-        {briefs.length === 0 && <p className="muted">No briefs yet.</p>}
+        <h2>{t("briefs")}</h2>
+        {briefs.length === 0 && <p className="muted">{t("no_briefs")}</p>}
         {briefs.map((b) => (
           <button key={b.id} className={`list-item ${selected === b.id ? "active" : ""}`} onClick={() => setSelected(b.id)}>
             <span>{b.title}</span>
-            <span className={`pill ${b.status}`}>{b.status}</span>
+            <span className={`pill ${b.status}`}>{tv("status", b.status)}</span>
           </button>
         ))}
       </aside>
       <section className="panel grow">
-        {selected ? <BriefView id={selected} onChange={load} /> : <p className="muted">Pick or create a brief.</p>}
+        {selected ? <BriefView id={selected} onChange={load} /> : <p className="muted">{t("pick_brief")}</p>}
       </section>
     </div>
   );
 }
 
 function BriefView({ id, onChange }: { id: number; onChange: () => void }) {
+  const { t, tv } = useI18n();
   const [brief, setBrief] = useState<BriefDetail | null>(null);
   const [error, setError] = useState("");
+  const { tr, translating, failed } = useAiText([
+    brief?.criteria?.summary,
+    ...(brief?.criteria?.topics ?? []),
+    ...(brief?.entries ?? [])
+      .filter((e) => e.status !== "rejected") // hidden, so not worth translating
+      .flatMap((e) => [...lines(e.reasons), ...lines(e.risks)]),
+  ]);
 
   const load = () => api.brief(id).then(setBrief).catch((e) => setError(String(e)));
   useEffect(() => {
@@ -86,7 +98,7 @@ function BriefView({ id, onChange }: { id: number; onChange: () => void }) {
     onChange();
   };
 
-  if (!brief) return <p className="muted">Loading…</p>;
+  if (!brief) return <p className="muted">{t("loading")}</p>;
   const visible = brief.entries.filter((e) => e.status !== "rejected");
 
   return (
@@ -94,42 +106,42 @@ function BriefView({ id, onChange }: { id: number; onChange: () => void }) {
       <div className="row between">
         <div>
           <h1>{brief.title}</h1>
-          <p className="muted">{brief.criteria?.summary ?? brief.text}</p>
+          <p className="muted">{brief.criteria?.summary ? tr(brief.criteria.summary) : brief.text}</p>
           {brief.criteria?.topics && (
             <div className="tags">
-              {brief.criteria.topics.map((t) => (
-                <span key={t} className="tag">
-                  {t}
+              {brief.criteria.topics.map((topic) => (
+                <span key={topic} className="tag">
+                  {tr(topic)}
                 </span>
               ))}
               {brief.criteria.languages?.map((l) => (
                 <span key={l} className="tag lang">
-                  {l}
+                  {tv("lang", l)}
                 </span>
               ))}
             </div>
           )}
+          <AiTextStatus translating={translating} failed={failed} />
         </div>
         <button className="ghost" onClick={rerun} disabled={brief.status === "running"}>
-          {brief.status === "running" ? "Watching videos…" : "Search again"}
+          {brief.status === "running" ? t("watching_videos") : t("search_again")}
         </button>
       </div>
       {error && <p className="error">{error}</p>}
-      {brief.status === "failed" && <p className="error">Run failed: {brief.error}</p>}
-      {brief.status === "running" && <div className="progress">Halo is reading the brief and scoring creators…</div>}
-      {brief.status === "done" && visible.length === 0 && (
-        <p className="muted">No creators matched yet. Add more creators or loosen the brief.</p>
-      )}
+      {brief.status === "failed" && <p className="error">{t("run_failed", { error: brief.error ?? "" })}</p>}
+      {brief.status === "running" && <div className="progress">{t("running_progress")}</div>}
+      {brief.status === "done" && visible.length === 0 && <p className="muted">{t("no_matches")}</p>}
       <div className="cards">
         {visible.map((entry) => (
-          <EntryCard key={entry.id} entry={entry} onChange={load} />
+          <EntryCard key={entry.id} entry={entry} tr={tr} onChange={load} />
         ))}
       </div>
     </div>
   );
 }
 
-function EntryCard({ entry, onChange }: { entry: Entry; onChange: () => void }) {
+function EntryCard({ entry, tr, onChange }: { entry: Entry; tr: (text: string) => string; onChange: () => void }) {
+  const { t, tv, num } = useI18n();
   const [message, setMessage] = useState(entry.outreach_message ?? "");
   const [copied, setCopied] = useState(false);
   const c = entry.creator;
@@ -153,8 +165,8 @@ function EntryCard({ entry, onChange }: { entry: Entry; onChange: () => void }) 
             {c.display_name} {entry.status === "starred" && "★"}
           </h3>
           <p className="muted small">
-            {c.accounts.map((a) => `${a.platform} ${a.handle} · ${formatNumber(a.followers)}`).join("  |  ")}
-            {c.price_uzs ? `  |  ${formatNumber(c.price_uzs)} UZS` : ""}
+            {c.accounts.map((a) => `${a.platform} ${a.handle} · ${num(a.followers)}`).join("  |  ")}
+            {c.price_uzs ? `  |  ${num(c.price_uzs)} ${t("currency")}` : ""}
           </p>
         </div>
         <div className="score" style={{ ["--score" as string]: entry.score }}>
@@ -162,33 +174,33 @@ function EntryCard({ entry, onChange }: { entry: Entry; onChange: () => void }) 
         </div>
       </div>
       <ul className="reasons">
-        {entry.reasons.split("\n").filter(Boolean).map((r) => (
-          <li key={r}>{r}</li>
+        {lines(entry.reasons).map((r) => (
+          <li key={r}>{tr(r)}</li>
         ))}
       </ul>
       {entry.risks && (
         <ul className="risks">
-          {entry.risks.split("\n").filter(Boolean).map((r) => (
-            <li key={r}>{r}</li>
+          {lines(entry.risks).map((r) => (
+            <li key={r}>{tr(r)}</li>
           ))}
         </ul>
       )}
       <label className="small">
-        Outreach draft ({entry.outreach_language ?? "uz"})
+        {t("outreach_draft", { language: tv("lang", entry.outreach_language ?? "uz") })}
         <textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} onBlur={saveMessage} />
       </label>
       <div className="row">
         <button className="ghost" onClick={copy}>
-          {copied ? "Copied" : "Copy message"}
+          {copied ? t("copied") : t("copy_message")}
         </button>
         <button className="ghost" onClick={() => setStatus(entry.status === "starred" ? "suggested" : "starred")}>
-          {entry.status === "starred" ? "Unstar" : "Star"}
+          {entry.status === "starred" ? t("unstar") : t("star")}
         </button>
         <button className="ghost" onClick={() => setStatus("contacted")}>
-          Mark contacted
+          {t("mark_contacted")}
         </button>
         <button className="ghost danger" onClick={() => setStatus("rejected")}>
-          Not a fit
+          {t("not_a_fit")}
         </button>
       </div>
     </article>
