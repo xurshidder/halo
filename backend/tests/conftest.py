@@ -6,7 +6,10 @@ from pathlib import Path
 # Point settings at the test database before any halo module reads them.
 os.environ.setdefault("HALO_DATABASE_URL", "postgresql+asyncpg://postgres@/halo_test?host=/tmp&port=5433")
 os.environ["HALO_MEDIA_DIR"] = tempfile.mkdtemp(prefix="halo-media-")
-for key in ("HALO_VOYAGE_API_KEY", "HALO_ELEVENLABS_API_KEY", "HALO_TELEGRAM_BOT_TOKEN", "HALO_YOUTUBE_API_KEY"):
+for key in (
+    "HALO_ANTHROPIC_API_KEY", "HALO_VOYAGE_API_KEY", "HALO_ELEVENLABS_API_KEY", "HALO_TELEGRAM_BOT_TOKEN",
+    "HALO_YOUTUBE_API_KEY",
+):
     os.environ.pop(key, None)
 
 import pytest

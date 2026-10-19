@@ -5,6 +5,7 @@ Server-side refusal fallbacks are enabled: if the model declines on a policy
 category, the API re-runs the request on a fallback model inside the same call.
 """
 
+import logging
 from functools import lru_cache
 from typing import Any
 
@@ -15,6 +16,8 @@ from halo.config import get_settings
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
+log = logging.getLogger(__name__)
+
 
 class ClaudeError(RuntimeError):
     pass
@@ -22,7 +25,11 @@ class ClaudeError(RuntimeError):
 
 @lru_cache
 def get_client() -> anthropic.AsyncAnthropic:
-    # Reads ANTHROPIC_API_KEY (or an `ant auth login` profile) from the environment.
+    # HALO_ANTHROPIC_API_KEY if set; otherwise the SDK reads ANTHROPIC_API_KEY (or an
+    # `ant auth login` profile) from the environment.
+    api_key = get_settings().anthropic_api_key
+    if api_key:
+        return anthropic.AsyncAnthropic(api_key=api_key, max_retries=4)
     return anthropic.AsyncAnthropic(max_retries=4)
 
 
@@ -49,6 +56,18 @@ async def parse[T: BaseModel](
         messages=[{"role": "user", "content": content}],
         output_config={"effort": effort},
         output_format=output_type,
+    )
+    usage = response.usage
+    # One line per call, so real token spend can be read from the logs.
+    log.info(
+        "claude %s model=%s stop=%s input=%d cache_write=%d cache_read=%d output=%d",
+        output_type.__name__,
+        response.model,
+        response.stop_reason,
+        usage.input_tokens,
+        usage.cache_creation_input_tokens or 0,
+        usage.cache_read_input_tokens or 0,
+        usage.output_tokens,
     )
     if response.stop_reason == "refusal":
         details = response.stop_details

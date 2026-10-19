@@ -78,7 +78,7 @@ The tests expect a database at `HALO_DATABASE_URL` (default in `tests/conftest.p
 
 | Key | Needed for | Required |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Video analysis, brief planning, scoring, outreach drafts | Yes |
+| `ANTHROPIC_API_KEY` (or `HALO_ANTHROPIC_API_KEY`, which wins if both are set) | Video analysis, brief planning, scoring, outreach drafts | Yes |
 | `HALO_YOUTUBE_API_KEY` | Pulling YouTube channels | For YouTube |
 | Instagram token per creator | Pulling a creator's own Reels (Instagram API with Instagram Login) | For Instagram |
 | `HALO_TELEGRAM_BOT_TOKEN` | Creator sign-up via `/join`, brand alerts | For Telegram |
@@ -87,7 +87,7 @@ The tests expect a database at `HALO_DATABASE_URL` (default in `tests/conftest.p
 
 ## Costs
 
-Video analysis is the expensive step: about 8 frames plus a transcript per video, roughly **$0.05 per video** on Claude Opus 5.5 (estimate; check real usage in the Anthropic Console). 1,000 creators × 10 videos is about $500. Scoring a brief costs one call per candidate (40 by default) plus one draft per shortlisted creator.
+Video analysis is the expensive step: about 8 frames plus a transcript per video, about **$0.06 per video** on Claude Opus 5.5 (measured on 13–15 second vertical videos: about 12,700 input and 500–760 output tokens). 1,000 creators × 10 videos is about $600. Scoring a brief costs one call per candidate (40 by default, $0.013–0.028 each), plus one draft (about $0.013) per creator who joins the shortlist; re-runs keep existing drafts instead of writing new ones. Every Claude call logs its token usage (`claude <Step> ... input=… cache_write=… cache_read=… output=…`) in the worker output.
 
 ## Things to know before launch
 

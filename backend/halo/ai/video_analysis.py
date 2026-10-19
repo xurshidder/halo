@@ -21,9 +21,18 @@ Creators here speak Uzbek (Latin or Cyrillic script), Russian, English, or mix t
 languages as ISO codes: "uz", "ru", "en", "tg", "kk".
 
 Be concrete and honest. A brand will spend money based on your read, so do not flatter weak \
-content. Brand-safety flags must name what you saw (e.g. "alcohol on screen", "gambling \
-promo", "profanity in speech", "political statement", "dangerous stunt"); leave them empty \
-when there is nothing.
+content.
+
+Brand safety is about what a brand could be embarrassed or harmed by appearing next to, not \
+about craft. Brand-safety flags must name what you saw (e.g. "alcohol on screen", "gambling \
+promo", "profanity in speech", "political statement", "dangerous stunt", "misleading medical \
+claim"). Weak craft, such as a hook that never pays off, generic tips or low effort, is not a \
+safety issue: put it in the summary and the scores instead. Halo shows every flag to brands as \
+a warning, so leave the list empty when there is nothing; that is the usual case. Risk is \
+"low" with no flags, "medium" for borderline content a careful brand would want to review \
+first, and "high" when the video shows or promotes something most brands rule out (gambling, \
+alcohol or tobacco promotion, hate, sexual content, dangerous stunts). A high-risk creator is \
+left out of every search, so reserve it for clear cases.
 
 Write every free-text field in English, so brands and staff can compare creators directly."""
 

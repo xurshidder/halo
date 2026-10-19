@@ -1,9 +1,10 @@
+import asyncio
 import json
 
 from sqlalchemy import select
 
 from halo.agent import prompts
-from halo.agent.scout import run_brief
+from halo.agent.scout import _gather_primed, run_brief
 from halo.models import Brief, BriefStatus, ShortlistEntry, ShortlistStatus
 from tests.factories import make_brand, make_creator
 
@@ -93,9 +94,40 @@ async def test_rerun_keeps_decisions_and_skips_rejected(session, fake_claude):
     assert state["new_entry_ids"] == []
     scored = [c for c in fake_claude.calls if c["type"] is prompts.CandidateScore]
     assert all('"name": "Dilnoza"' not in c["content"] for c in scored)
+    # Malika already has a message, which save() keeps, so no new draft is paid for
+    assert not [c for c in fake_claude.calls if c["type"] is prompts.OutreachDraft]
     await session.refresh(malika)
     assert malika.status == ShortlistStatus.starred
     assert malika.outreach_message == "Edited by the team"
+
+
+async def test_outreach_draft_sees_the_brief(session, fake_claude):
+    setup_claude(fake_claude)
+    brief = await seed(session)
+    brief.text = "Find Uzbek skincare creators. 2 Reels in November."
+    await session.commit()
+
+    await run_brief(brief.id)
+
+    drafts = [c for c in fake_claude.calls if c["type"] is prompts.OutreachDraft]
+    assert drafts
+    assert all("<brief>\nTitle: Spring serum launch\n\nFind Uzbek skincare creators. 2 Reels in November." in c["content"]
+               for c in drafts)
+
+
+async def test_gather_primed_runs_first_call_alone():
+    events = []
+
+    async def call(i):
+        events.append(("start", i))
+        await asyncio.sleep(0.01)
+        events.append(("end", i))
+        return i * 10
+
+    assert await _gather_primed(call, [1, 2, 3]) == [10, 20, 30]
+    assert events[:2] == [("start", 1), ("end", 1)]  # the first call finishes before any other starts
+    assert events[2:4] == [("start", 2), ("start", 3)]  # the rest run together
+    assert await _gather_primed(call, []) == []
 
 
 async def test_failed_run_marks_brief_failed(session, fake_claude):

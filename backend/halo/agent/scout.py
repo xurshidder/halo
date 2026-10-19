@@ -114,6 +114,18 @@ def _has_candidates(state: ScoutState) -> str:
     return "score" if state.get("candidate_ids") else "save"
 
 
+async def _gather_primed(fn, items: list) -> list:
+    """Run fn over items concurrently, except the first call, which runs alone.
+
+    The calls share a cached system prompt. Calls that start before the cache exists all
+    pay to write it, so the first call writes it and the rest read it.
+    """
+    if not items:
+        return []
+    first = await fn(items[0])
+    return [first, *await asyncio.gather(*(fn(item) for item in items[1:]))]
+
+
 async def _candidate_dossier(session, creator_id: int) -> str:
     creator = await session.get(Creator, creator_id)
     analyses = await recent_analyses(session, creator_id, limit=6)
@@ -186,7 +198,7 @@ async def score(state: ScoutState) -> ScoutState:
                 return None
         return {"creator_id": creator_id, **result.model_dump(), "score": max(0, min(100, result.score))}
 
-    results = await asyncio.gather(*(score_one(cid) for cid in state["candidate_ids"]))
+    results = await _gather_primed(score_one, state["candidate_ids"])
     return {"scores": [r for r in results if r is not None]}
 
 
@@ -200,8 +212,21 @@ async def draft(state: ScoutState) -> ScoutState:
     settings = get_settings()
     criteria = prompts.BriefCriteria(**state["criteria"])
     system = claude.cached_system(f"{prompts.OUTREACH_INSTRUCTIONS}\n\n{state['brand_context']}")
+    shortlist = state.get("shortlist", [])
     async with get_sessionmaker()() as session:
-        dossiers = {s["creator_id"]: await _candidate_dossier(session, s["creator_id"]) for s in state["shortlist"]}
+        # On re-runs, save() keeps the message a creator already has, so don't pay to draft another.
+        drafted = set(
+            await session.scalars(
+                select(ShortlistEntry.creator_id).where(
+                    ShortlistEntry.brief_id == state["brief_id"],
+                    ShortlistEntry.creator_id.in_([s["creator_id"] for s in shortlist]),
+                    ShortlistEntry.outreach_message.is_not(None),
+                    ShortlistEntry.outreach_message != "",
+                )
+            )
+        )
+        to_draft = [s for s in shortlist if s["creator_id"] not in drafted]
+        dossiers = {s["creator_id"]: await _candidate_dossier(session, s["creator_id"]) for s in to_draft}
     limit = asyncio.Semaphore(settings.scoring_concurrency)
 
     async def draft_one(entry: dict) -> dict:
@@ -211,6 +236,7 @@ async def draft(state: ScoutState) -> ScoutState:
                     prompts.OutreachDraft,
                     system=system,
                     content=(
+                        f"<brief>\n{state['brief_text']}\n</brief>\n\n"
                         f"What the brand wants: {criteria.summary}\n"
                         f"Why this creator fits: {entry['fit_summary']}\n"
                         f"Write in: {entry['outreach_language']}\n\n"
@@ -223,7 +249,8 @@ async def draft(state: ScoutState) -> ScoutState:
                 log.warning("Outreach draft for creator %s failed: %s", entry["creator_id"], e)
                 return {**entry, "outreach_message": None}
 
-    return {"shortlist": list(await asyncio.gather(*(draft_one(e) for e in state.get("shortlist", []))))}
+    new_drafts = {d["creator_id"]: d for d in await _gather_primed(draft_one, to_draft)}
+    return {"shortlist": [new_drafts.get(s["creator_id"], s) for s in shortlist]}
 
 
 async def save(state: ScoutState) -> ScoutState:

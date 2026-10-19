@@ -72,7 +72,13 @@ class CandidateScore(BaseModel):
     score: int = Field(description="0-100 fit score.")
     fit_summary: str = Field(description="One line a busy marketer can read.")
     reasons: list[str] = Field(description="2-4 reasons, each citing video ids like 'video 12'.")
-    risks: list[str]
+    risks: list[str] = Field(
+        description=(
+            "0-3 risks specific to this creator and brief, most important first. Each one is shown "
+            "to the marketer, so leave out unknowns that apply to every creator (audience "
+            "demographics, filters, share of sponsored posts) unless their videos point to a problem."
+        )
+    )
     evidence_video_ids: list[int]
     outreach_language: Literal["uz", "ru", "en"]
 

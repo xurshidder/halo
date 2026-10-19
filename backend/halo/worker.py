@@ -65,8 +65,21 @@ async def rerun_standing_briefs(ctx) -> None:
         await ctx["redis"].enqueue_job("run_brief_task", brief_id)
 
 
+async def startup(ctx) -> None:
+    # arq only configures its own logger. Without this, Halo's INFO lines (job progress and
+    # the token usage of every Claude call) never reach the worker's output.
+    halo_log = logging.getLogger("halo")
+    if not halo_log.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s: %(name)s %(message)s", "%H:%M:%S"))
+        halo_log.addHandler(handler)
+        halo_log.setLevel(logging.INFO)
+        halo_log.propagate = False
+
+
 class WorkerSettings:
     functions = [analyze_video_task, refresh_creator_task, run_brief_task]
+    on_startup = startup
     cron_jobs = [
         cron(refresh_stale_creators, minute=5),
         cron(rerun_standing_briefs, hour=4, minute=0),  # 09:00 in Tashkent (UTC+5)

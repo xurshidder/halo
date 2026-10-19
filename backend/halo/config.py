@@ -9,7 +9,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/halo"
     redis_url: str = "redis://localhost:6379/0"
 
-    # Claude. The API key itself is read by the Anthropic SDK from ANTHROPIC_API_KEY.
+    # Claude. Without HALO_ANTHROPIC_API_KEY, the Anthropic SDK reads ANTHROPIC_API_KEY
+    # (or an `ant auth login` profile) itself. The HALO_ name is for hosts that reserve
+    # ANTHROPIC_API_KEY for something else.
+    anthropic_api_key: str | None = None
     claude_model: str = "claude-opus-5-5"
     claude_effort_analysis: str = "medium"
     claude_effort_scoring: str = "medium"
