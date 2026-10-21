@@ -1,6 +1,8 @@
-# Halo
+# Collab
 
-Halo is an AI coworker for influencer marketing in Uzbekistan. It watches creators' videos, learns each brand's context, and turns a plain-language brief into a ranked shortlist of creators, each with reasons and an outreach draft written in Uzbek or Russian. New matches are posted to the brand's Telegram chat.
+Collab is an AI coworker for influencer marketing in Uzbekistan. It watches creators' videos, learns each brand's context, and turns a plain-language brief into a ranked shortlist of creators, each with reasons and an outreach draft written in Uzbek or Russian. New matches are posted to the brand's Telegram chat.
+
+The code still uses its working name, `halo` (the Python package, `HALO_` settings, this repository); only the product is called Collab. The brand (logo, colours, type, voice) is in `web/public` and `web/src/styles.css`.
 
 It follows the architecture of [Kuli](https://www.ycombinator.com/companies/kuli) (YC Spring 2026), adapted to the Uzbek market.
 
@@ -45,7 +47,7 @@ brief ──► scout agent (LangGraph)
 
 ```bash
 cp .env.example .env        # add ANTHROPIC_API_KEY at minimum
-docker compose up --build   # web on http://localhost:8080, API on :8000
+docker compose up --build   # landing page on http://localhost:8080, the app at /app, API on :8000
 docker compose --profile bot up -d bot   # once HALO_TELEGRAM_BOT_TOKEN is set
 ```
 
@@ -70,7 +72,7 @@ uv run pytest                                 # tests (uses the halo_test databa
 
 cd ../web
 npm install
-npm run dev                                   # http://localhost:5173, proxies /api to :8000
+npm run dev                                   # http://localhost:5173 (app at /app), proxies /api to :8000
 ```
 
 The tests expect a database at `HALO_DATABASE_URL` (default in `tests/conftest.py`: `halo_test` on a local socket, port 5433). They use a stand-in for Claude, so they need no API key.

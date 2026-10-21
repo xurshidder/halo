@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, Brand, Brief, BriefDetail, Entry } from "../api";
 import { AiTextStatus, useAiText, useI18n } from "../i18n";
+import ScoreRing from "../ScoreRing";
 
 const lines = (text: string) => text.split("\n").filter(Boolean);
 
@@ -132,15 +133,25 @@ function BriefView({ id, onChange }: { id: number; onChange: () => void }) {
       {brief.status === "running" && <div className="progress">{t("running_progress")}</div>}
       {brief.status === "done" && visible.length === 0 && <p className="muted">{t("no_matches")}</p>}
       <div className="cards">
-        {visible.map((entry) => (
-          <EntryCard key={entry.id} entry={entry} tr={tr} onChange={load} />
+        {visible.map((entry, i) => (
+          <EntryCard key={entry.id} entry={entry} top={i === 0} tr={tr} onChange={load} />
         ))}
       </div>
     </div>
   );
 }
 
-function EntryCard({ entry, tr, onChange }: { entry: Entry; tr: (text: string) => string; onChange: () => void }) {
+function EntryCard({
+  entry,
+  top,
+  tr,
+  onChange,
+}: {
+  entry: Entry;
+  top: boolean;
+  tr: (text: string) => string;
+  onChange: () => void;
+}) {
   const { t, tv, num } = useI18n();
   const [message, setMessage] = useState(entry.outreach_message ?? "");
   const [copied, setCopied] = useState(false);
@@ -169,9 +180,7 @@ function EntryCard({ entry, tr, onChange }: { entry: Entry; tr: (text: string) =
             {c.price_uzs ? `  |  ${num(c.price_uzs)} ${t("currency")}` : ""}
           </p>
         </div>
-        <div className="score" style={{ ["--score" as string]: entry.score }}>
-          {entry.score}
-        </div>
+        <ScoreRing score={entry.score} top={top} />
       </div>
       <ul className="reasons">
         {lines(entry.reasons).map((r) => (

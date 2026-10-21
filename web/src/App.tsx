@@ -42,9 +42,12 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="logo">
-          <span className="halo-ring" /> Halo
-        </div>
+        <a className="logo" href="/" aria-label="Collab">
+          <picture>
+            <source srcSet="/collab-wordmark-on-dark.svg" media="(prefers-color-scheme: dark)" />
+            <img src="/collab-wordmark.svg" alt="Collab" />
+          </picture>
+        </a>
         <nav>
           {(["briefs", "creators", "brand"] as Tab[]).map((tb) => (
             <button key={tb} className={tab === tb ? "tab active" : "tab"} onClick={() => setTab(tb)}>
