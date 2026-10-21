@@ -1,5 +1,8 @@
 from functools import lru_cache
+from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +11,13 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/halo"
     redis_url: str = "redis://localhost:6379/0"
+    # "redis": an arq worker runs background jobs (Docker Compose). "inline": the API process
+    # runs them itself, for hosts with one free service and no worker (Render, see render.yaml).
+    jobs: Literal["redis", "inline"] = "redis"
+
+    # One-service hosting (halo.api.site): the built web app to serve, and a shared password.
+    web_dist: str = ""
+    access_password: str | None = None
 
     # Claude. Without HALO_ANTHROPIC_API_KEY, the Anthropic SDK reads ANTHROPIC_API_KEY
     # (or an `ant auth login` profile) itself. The HALO_ name is for hosts that reserve
@@ -51,6 +61,19 @@ class Settings(BaseSettings):
     creator_refresh_hours: int = 24
 
     cors_origins: list[str] = ["http://localhost:5173"]
+
+    @field_validator("database_url")
+    @classmethod
+    def _asyncpg_url(cls, url: str) -> str:
+        """Accept the plain postgres:// URLs that hosts such as Neon and Render hand out."""
+        parts = urlsplit(url)
+        scheme = "postgresql+asyncpg" if parts.scheme in ("postgres", "postgresql") else parts.scheme
+        params = parse_qsl(parts.query, keep_blank_values=True)
+        if scheme == parts.scheme and not any(k in ("sslmode", "channel_binding") for k, _ in params):
+            return url
+        # asyncpg spells sslmode as ssl, and rejects libpq's channel_binding option.
+        params = [("ssl" if k == "sslmode" else k, v) for k, v in params if k != "channel_binding"]
+        return urlunsplit((scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
 
 
 @lru_cache

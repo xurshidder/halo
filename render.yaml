@@ -1,0 +1,21 @@
+# Free hosting on Render: one web service running the root Dockerfile (web app, API and
+# background jobs together). The database lives on Neon's free plan; see "Put Halo online"
+# in README.md. Render asks for the three secrets below when you create the Blueprint.
+services:
+  - type: web
+    name: halo
+    runtime: docker
+    plan: free
+    region: frankfurt # closest Render region to Uzbekistan
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: HALO_DATABASE_URL # Neon connection string, as Neon shows it
+        sync: false
+      - key: HALO_ANTHROPIC_API_KEY
+        sync: false
+      - key: HALO_ACCESS_PASSWORD # the password people type to open Halo
+        sync: false
+      - key: HALO_SEED_DEMO # load the demo brand and creators into an empty database
+        value: "1"

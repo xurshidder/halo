@@ -14,7 +14,7 @@ from halo.config import get_settings
 from halo.db import get_sessionmaker
 from halo.logs import show_halo_logs
 from halo.models import Brief, BriefStatus, CreatorAccount, Platform
-from halo.queue import redis_settings
+from halo.queue import redis_settings, run_inline
 from halo.services.analyze import analyze_video
 from halo.services.ingest import refresh_creator
 
@@ -68,6 +68,22 @@ async def rerun_standing_briefs(ctx) -> None:
 
 async def startup(ctx) -> None:
     show_halo_logs()
+
+
+class _InlineRedis:
+    """Stands in for arq's Redis pool when jobs run inside the API process (HALO_JOBS=inline)."""
+
+    async def enqueue_job(self, function: str, *args) -> None:
+        run_inline(function, *args)
+
+
+async def run_job(function: str, *args) -> None:
+    """Run one job in this process, the way the worker would."""
+    job = {f.__name__: f for f in WorkerSettings.functions}[function]
+    try:
+        await job({"redis": _InlineRedis()}, *args)
+    except Exception:
+        log.exception("Background job %s%s failed", function, args)
 
 
 class WorkerSettings:

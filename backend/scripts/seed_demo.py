@@ -4,10 +4,14 @@ Everything here is made up for demonstration: one brand, six creators with
 analyzed videos, and one finished brief with a shortlist.
 
     uv run python -m scripts.seed_demo
+    uv run python -m scripts.seed_demo --if-empty   # skip when the database already has a brand
 """
 
 import asyncio
+import sys
 from datetime import UTC, datetime
+
+from sqlalchemy import select
 
 from halo.db import get_sessionmaker
 from halo.models import (
@@ -46,8 +50,11 @@ CREATORS = [
 ]
 
 
-async def main() -> None:
+async def main(if_empty: bool = False) -> None:
     async with get_sessionmaker()() as session:
+        if if_empty and await session.scalar(select(Brand.id).limit(1)) is not None:
+            print("Database already has data; demo data not loaded.")
+            return
         brand = Brand(
             name="Nur Cosmetics (demo)",
             description="Affordable Korean-style skincare sold on Uzum, for women 18-35.",
@@ -112,4 +119,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(if_empty="--if-empty" in sys.argv))
